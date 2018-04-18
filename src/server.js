@@ -1,21 +1,35 @@
-const bodyParser = require('body-parser');
 const express = require('express');
 const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);//put mongo in charge of session storage
+
 const User = require('./user');
-const bcrypt = require('bcrypt');
 
 const STATUS_USER_ERROR = 422;
 const BCRYPT_COST = 11;
 
+mongoose.connect('mongodb://localhost/authdb')
+  .then(() => {
+    console.log('\n=== connected to MongoDB ===\n');
+  }).catch(err => console.log('connection failed', err))
+
+
 const server = express();
-// to enable parsing of json bodies for post requests
-server.use(bodyParser.json());
+
+server.use(express.json());
 
 server.use(session({
-  resave: false,
+  name: 'auth',
+  resave: true,
   saveUninitialized: false,
-  secret: 'e5SPiqsEtjexkTj3Xqovsjzq8ovjfgVDFMfUzSmJO21dtXs4re'
-}));//express session middleWare
+  secret: 'e5SPiqsEtjexkTj3Xqovsjzq8ovjfgVDFMfUzSmJO21dtXs4re',
+  cookie: { maxAge: 1 * 24 * 60 * 60 * 1000 }, // miliseconds
+  secure: false,
+  store: new MongoStore({
+    url: 'mongodb://localhost/sessions',//defining store database
+    ttl: 10 * 60, // session lifespan in seconds
+  }),
+})
+);//express session middleWare
 
 /* Sends the given err, a string or an object, to the client. Sets the status
  * code appropriately. */
